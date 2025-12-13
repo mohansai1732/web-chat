@@ -1,90 +1,86 @@
-const fs = require('fs');
-const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const USERS_FILE = path.join(__dirname, 'users.json');
-
-// Read users from file
-function readUsers() {
-  try {
-    const raw = fs.readFileSync(USERS_FILE, 'utf8');
-    return JSON.parse(raw || '[]');
-  } catch (e) {
-    return [];
-  }
-}
-
-// Write users to file
-function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-// Make sure users.json exists
-if (!fs.existsSync(USERS_FILE)) writeUsers([]);
+const db = require('./db'); // SQLite connection
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// SIGNUP API
-app.post('/signup', async (req, res) => {
+/* =========================
+   SIGNUP API
+========================= */
+app.post('/signup', (req, res) => {
   const { username, password } = req.body || {};
 
-  if (!username || !password)
+  if (!username || !password) {
     return res.status(400).json({ error: 'username and password required' });
-
-  const users = readUsers();
-
-  if (users.find((u) => u.username === username)) {
-    return res.status(409).json({ error: 'username already taken' });
   }
 
-  const hash = await bcrypt.hash(password, 8);
+  const passwordHash = bcrypt.hashSync(password, 8);
 
-  users.push({
-    username,
-    passwordHash: hash,
-    createdAt: new Date().toISOString(),
+  const query =
+    'INSERT INTO users (username, passwordHash) VALUES (?, ?)';
+
+  db.run(query, [username, passwordHash], function (err) {
+    if (err) {
+      if (err.message.includes('UNIQUE')) {
+        return res.status(409).json({ error: 'username already taken' });
+      }
+      return res.status(500).json({ error: 'database error' });
+    }
+
+    res.json({ ok: true, username });
   });
-
-  writeUsers(users);
-
-  return res.json({ ok: true, username });
 });
 
-// LOGIN API
-app.post('/login', async (req, res) => {
+/* =========================
+   LOGIN API
+========================= */
+app.post('/login', (req, res) => {
   const { username, password } = req.body || {};
 
-  if (!username || !password)
+  if (!username || !password) {
     return res.status(400).json({ error: 'username and password required' });
+  }
 
-  const users = readUsers();
-  const user = users.find((u) => u.username === username);
+  const query = 'SELECT * FROM users WHERE username = ?';
 
-  if (!user) return res.status(401).json({ error: 'invalid credentials' });
+  db.get(query, [username], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: 'database error' });
+    }
 
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return res.status(401).json({ error: 'invalid credentials' });
+    if (!user) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
 
-  return res.json({ ok: true, username });
+    const ok = bcrypt.compareSync(password, user.passwordHash);
+    if (!ok) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
+
+    res.json({ ok: true, username });
+  });
 });
 
-// HEALTH CHECK
+/* =========================
+   HEALTH CHECK
+========================= */
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
-// Create server + socket
+/* =========================
+   SOCKET.IO
+========================= */
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// Online users: socket.id -> username
+// socket.id -> username
 const online = new Map();
 
-// SOCKET.IO EVENTS
 io.on('connection', (socket) => {
   socket.on('join', (username) => {
     if (!username) return socket.disconnect();
@@ -97,7 +93,7 @@ io.on('connection', (socket) => {
 
   socket.on('message', (msg) => {
     const username = online.get(socket.id) || 'Unknown';
-    if (!msg.trim()) return;
+    if (!msg || !msg.trim()) return;
 
     io.emit('message', {
       username,
@@ -117,7 +113,10 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 3001;
+/* =========================
+   START SERVER
+========================= */
+const PORT = process.env.port || 3001;
 server.listen(PORT, () =>
   console.log(`Server running on http://localhost:${PORT}`)
 );
