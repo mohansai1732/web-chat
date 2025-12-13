@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 
-const SERVER = 'http://localhost:3001'
+const SERVER_URL = "https://web-chat-backend.onrender.com";
+
 
 // store username in browser
 function saveUser(name) { localStorage.setItem('chat_user', name) }
