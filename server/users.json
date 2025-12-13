@@ -1,0 +1,17 @@
+[
+  {
+    "username": "mohan",
+    "passwordHash": "$2b$08$b/beIg4V8nt3606Uf71fweQuPfOsxSVYJ6ueilv6evZXmIIjk2F82",
+    "createdAt": "2025-12-12T04:57:26.370Z"
+  },
+  {
+    "username": "sai",
+    "passwordHash": "$2b$08$WUpJjNkXuE5rjl8nljV/NOzXt9rpOF58U1iZkUW.Oen7lvwirsu1a",
+    "createdAt": "2025-12-12T05:02:23.935Z"
+  },
+  {
+    "username": "sai1",
+    "passwordHash": "$2b$08$/6uGjRcFmGSUCDy0gGMMcepUd78CJVH.l1BKX/A7IOtxJen8hp05.",
+    "createdAt": "2025-12-12T05:21:34.721Z"
+  }
+]
