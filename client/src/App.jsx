@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 
-const SERVER = "https://web-chat-backend.onrender.com";
+const SERVER = "https://web-chat-3z0k.onrender.com";
 
 
 // store username in browser
